@@ -74,15 +74,16 @@ function createWindow() {
   const height = screenHeight - space * 2;
 
   gameWindow = new BrowserWindow({
-    // setting to true doesn't work in Windows
-    // https://github.com/electron/electron/issues/6036
-    // fullscreen: false,
+    fullscreen: true,
     fullscreenable: true,
     defaultEncoding: "utf8",
     x: x,
     y: y,
     width: width,
     height: height,
+    title: "Quiplibre",
+    autoHideMenuBar: true,
+    icon: "favicon.png",
   });
 
   const settings = {

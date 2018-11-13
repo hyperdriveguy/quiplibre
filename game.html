@@ -3,28 +3,39 @@
 <head>
 	<meta charset="utf-8">
 	<title>Quiplibre</title>
+	<link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.css">
+	<script src="node_modules/bootstrap/dist/js/bootstrap.js"></script>
 </head>
 <body>
-<div id="prevDiv"></div>
-<div id="playDiv">Hi, welcome to Quiplibre! Connect to wifi and visit happyfuntimes.net to join!<br>No players established.</div>
-<div id="buttonDiv"><button id="startButton" onClick="nextRound()">start the game</button></div>
+	<div class="jumbotron text-center" id="headerDiv">
+		<h1><b>Quiplibre</b></h1>
+		<p>Connect to wifi and visit happyfuntimes.net to join!</p>
+		<p class="small">You need at least three people to connect in order to play Quiplibre.</p>
+	</div>
+	<div class="text-center container" style="margin-bottom:30px;" id="playDiv">
+		<table class="table table-striped" id=playerTable>
+	    <thead>
+				<tr><th id="playTableHeader">Players</th></tr>
+			</thead>
+			<tbody>
+			</tbody>
+		</table>
+	</div>
+	<div class="text-center" id="buttonDiv">
+		<button type="button" class="btn btn-primary" style="margin-bottom:30px;" id="startButton" onClick="nextRound()" disabled>Start Game</button>
+	</div>
 </body>
+<footer>
+  <div class="text-center small" id="prevDiv"></div>
+</footer>
 <script src="prompts.json"></script><!-- Databases are for suckers -->
 <script>
 const happyfuntimes = require('happyfuntimes');
 
 const server = new happyfuntimes.GameServer();
 
-attr = '<div id="attrDiv"><i>QuipLibre is free software, under <a href="LICENSE.txt">AGPL v3+</a>. Its source code can be found <a href="https://github.com/wyattscarpenter/quiplibre">here</a>.</i></div>'
+attr = '<div id="attrDiv"><i>QuipLibre is free software, under <a href="LICENSE.txt">AGPL v3+</a>.</i></div>'
 prevDiv.innerHTML = attr;
-// A new player has arrived.
-server.on('playerconnect', function(netPlayer) {
-	if (!gameBegun){
-		console.log(
-			players.push(new Player(netPlayer, "player" + (++playerId)))
-		);
-	}
-});
 
 // globals
 var gameBegun = false;
@@ -37,8 +48,22 @@ const maxRounds = 3; //a nice number of rounds
 var choices = [];
 var votes = [0,0];
 
-function randInt(min, max) {
-	if (max === undefined) {
+// A new player has arrived.
+server.on('playerconnect', function(netPlayer){
+	if (!gameBegun){
+		console.log(
+			players.push(new Player(netPlayer, "player" + (++playerId)))
+		);
+	}
+	//if (players.length >= 3) {
+	if (players.length >= 2) { //testing
+		document.getElementById("startButton").removeAttribute("disabled");
+	}
+
+});
+
+function randInt(min, max){
+	if (max === undefined){
 		max = min;
 		min = 0;
 	}
@@ -71,7 +96,7 @@ class Player {
 			players.splice(ndx, 1);
 		}
 	}
-	handleAnswer(cmd){
+	handleAnswer(cmd) {
 		//the idea is to check if the response is to the right question
 		//to prevent errors
 		console.log(this);
@@ -85,9 +110,8 @@ class Player {
 			this.state = "rest";
 			this.netPlayer.sendCmd("displayMessage",
 				"<p>Your game should begin shortly! Look at the big screen!</p>");
-			display("<p>Last player to join: "+cmd.answer+
-				"<br>total players: "+playerId+"</p>"
-			);
+			addPlayerToTable(cmd.answer);
+			playTableHeader.innerHTML = "Players (" + players.length + ")"
 		} else if(this.state == "prompt0"){
 			if (cmd.prompt == this.prompts[0]){
 				this.answers[0] = cmd.answer;
@@ -111,13 +135,13 @@ class Player {
 	console.log("handling choice "+JSON.stringify(cmd));
 	console.log(JSON.stringify(this));
 	console.log(cmd.choices[0]!=choices[0]||cmd.choices[1]!=choices[1]);
-		if(cmd.choices[0]!=choices[0]||cmd.choices[1]!=choices[1]){//remember, == does not work on arrays
+		if(cmd.choices[0]!=choices[0]||cmd.choices[1]!=choices[1]){ //remember, == does not work on arrays
 			console.log("ignoring choice as it's between incorrect options");
 		} else if(this.state!="choosing"){
 			console.log("ignoring choice as player state is "+this.state);
 		} else {
 			votes[cmd.index]++;
-			this.netPlayer.sendCmd("displayMessage","<p>You voted for option "+(cmd.index+1)+".</p>")
+			this.netPlayer.sendCmd("displayMessage","<p>You voted for \""+(cmd.choices[cmd.index])+"\".</p>")
 			this.state = "rest";
 			if(votes[0]+votes[1] == players.length){
 				awardPoints();
@@ -131,7 +155,7 @@ Player.prototype.toString = function(){return this.name};
 //game logic fns
 function nextRound(){
 	if (players.length <= 1){
-		display("You need at least two people to connect "+
+		display("You need at least three people to connect "+
 			"in order to play Quiplibre."
 		);
 	} else {
@@ -150,7 +174,7 @@ function nextRound(){
 				players[i].state = "prompt0";
 			}
 
-			display("<p>Time for a nice round of Quiplibre! Round "+round+", to be exact!</p>");
+			changeHeader("<h1><b>Round " + round + "</b></h1>");
 			buttonDiv.innerHTML = "";
 		}else{
 			endGame();
@@ -159,13 +183,21 @@ function nextRound(){
 }
 
 function progressJudgement(){
+	/**
+	pp[0].answers[0] and pp[1].answers[1] are the answers the pair gave.
+	pp[2] is the prompt that was given to the pair.
+	**/
 	votes = [0,0];
 	if (playerPairs.length != 0){
 		pp = playerPairs.splice(Math.floor(Math.random()*playerPairs.length), 1)[0];
-		display("<p><b>"+pp[2]+"</b></p>"+
-			"<p>"+pp[0].answers[0]+
-			"<br>OR<br>"+
-			pp[1].answers[1]+"</p>"
+		changeHeader("<h4><b>Round " + round + "</b></h4>" +
+		"<h1><b>" + pp[2] + "</b></h1>"
+		);
+		display("<div class=\"row\">" +
+			"<div class=\"col-sm-5\" style=\"background-color:#f2f2f2\">" + pp[0].answers[0] + "</div>" +
+			"<div class=\"col-sm-2 lead text-center\">VS</div>" +
+			"<div class=\"col-sm-5\" style=\"background-color:#f2f2f2\">" + pp[1].answers[1] + "</div>" +
+			"</div>"
 		);
 		choices = [pp[0].answers[0],pp[1].answers[1]];
 		allPlayers(function f(p){
@@ -179,8 +211,8 @@ function progressJudgement(){
 
 function awardPoints(){
 	var scoreStr = "Previous result:<br>";
-	for(var i = 0; i<votes.length;i++){
-		scoreStr = scoreStr.concat(pp[i].name+" won "+votes[i]+" votes and thus "+computeScore(i)+" points!<br>");
+	for(var i = 0; i < votes.length; i++){
+		scoreStr = scoreStr.concat(pp[i].name + " won " + votes[i] + " votes and thus " + computeScore(i) + " points!<br>");
 		pp[i].score += computeScore(i);
 		pp[i].netPlayer.sendCmd("updateScore", pp[i].score);
 	}
@@ -189,15 +221,12 @@ function awardPoints(){
 
 function endGame(){
 	sortPlayers();
-		display("<p>End of the game! Here's a scoreboard:</p>"+
+		display("<p>End of the game! Here's the scoreboard:</p>"+
 			players.reduce(function f(acc, p){
 				return acc+p.name+": "+p.score+"<br>";
 			}, "")+
-			"<br><button onclick=\"newGame()\" value>New Game with Same Players</button>"+
-			"<br><button onclick=\"location.reload()\" value>New Game with New Players</button>"+
-			"<br><a href=\"https://github.com/wyattscarpenter/quiplibre\">"+
-				"Submit prompts or improvements at Github"+
-			"</a>"
+			"<br><button type=\"button\" class=\"btn btn-primary\" onclick=\"newGame()\" value>New Game with Same Players</button>"+
+			"<br><button type=\"button\" class=\"btn btn-default\" onclick=\"location.reload()\" value>New Game with New Players</button>"
 		)
 		prevDiv.innerHTML = attr;
 		//todo: could send something to players
@@ -216,7 +245,23 @@ function newGame(){
 //helper & utility fns
 function display(html){playDiv.innerHTML = html;}
 
-function computeScore(i){return votes[i] * round}
+function changeHeader(html){headerDiv.innerHTML = html;}
+
+function addPlayerToTable(name){
+	var table = document.getElementById("playerTable");
+	var row = table.insertRow(1);
+	var cell = row.insertCell(0);
+	cell.innerHTML = name;
+}
+
+function computeScore(i){
+	var scoreCalc = votes[i] * round
+	// if one player takes all the votes, double their score
+	if ((i == 0 && votes[1] == 0)||(i == 1 && votes[0] == 0)) {
+		scoreCalc *= 2;
+	}
+	return scoreCalc
+}
 
 function pullPrompt(){
 	if (prompts.length == 0){

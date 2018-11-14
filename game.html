@@ -9,7 +9,7 @@
 <body>
 	<div class="jumbotron text-center" id="headerDiv">
 		<h1><b>Quiplibre</b></h1>
-		<p>Connect to wifi and visit happyfuntimes.net to join!</p>
+		<p>Connect to wifi and visit <b>happyfuntimes.net</b> to join!</p>
 		<p class="small">You need at least three people to connect in order to play Quiplibre.</p>
 	</div>
 	<div class="text-center container" style="margin-bottom:30px;" id="playDiv">
@@ -44,9 +44,10 @@ var players = [];
 var playerPairs = [];
 var pp = []; //the current playerPair
 var round = 0;
-const maxRounds = 3; //a nice number of rounds
+const maxRounds = 3; // todo: make configurable
 var choices = [];
 var votes = [0,0];
+var table = document.getElementById("playerTable"); // used before and after game
 
 // A new player has arrived.
 server.on('playerconnect', function(netPlayer){
@@ -55,11 +56,10 @@ server.on('playerconnect', function(netPlayer){
 			players.push(new Player(netPlayer, "player" + (++playerId)))
 		);
 	}
-	//if (players.length >= 3) {
-	if (players.length >= 2) { //testing
+	if (players.length >= 3) {
+	//if (players.length >= 2) { //testing
 		document.getElementById("startButton").removeAttribute("disabled");
 	}
-
 });
 
 function randInt(min, max){
@@ -109,7 +109,7 @@ class Player {
 			this.name = cmd.answer;
 			this.state = "rest";
 			this.netPlayer.sendCmd("displayMessage",
-				"<p>Your game should begin shortly! Look at the big screen!</p>");
+				"<p><b>Your game should begin shortly! Look at the big screen!</b></p>");
 			addPlayerToTable(cmd.answer);
 			playTableHeader.innerHTML = "Players (" + players.length + ")"
 		} else if(this.state == "prompt0"){
@@ -122,7 +122,7 @@ class Player {
 			if (cmd.prompt == this.prompts[1]){
 				this.answers[1] = cmd.answer;
 				this.netPlayer.sendCmd("displayMessage",
-					"<p>Excellent! Now you just have to wait for everyone else to answer.</p>"
+					"<p><b>Excellent! Now you just have to wait for everyone else to answer.</b></p>"
 				);
 				this.state = "rest";
 			}
@@ -138,12 +138,12 @@ class Player {
 		if(cmd.choices[0]!=choices[0]||cmd.choices[1]!=choices[1]){ //remember, == does not work on arrays
 			console.log("ignoring choice as it's between incorrect options");
 		} else if(this.state!="choosing"){
-			console.log("ignoring choice as player state is "+this.state);
+			console.log("ignoring choice as player state is " + this.state);
 		} else {
 			votes[cmd.index]++;
-			this.netPlayer.sendCmd("displayMessage","<p>You voted for \""+(cmd.choices[cmd.index])+"\".</p>")
+			this.netPlayer.sendCmd("displayMessage","<p>You voted for \"" + (cmd.choices[cmd.index]) + "\".</p>")
 			this.state = "rest";
-			if(votes[0]+votes[1] == players.length){
+			if(votes[0]+votes[1] == (players.length - 2)) { // exclude those who submitted answers
 				awardPoints();
 				progressJudgement();
 			}
@@ -154,31 +154,25 @@ Player.prototype.toString = function(){return this.name};
 
 //game logic fns
 function nextRound(){
-	if (players.length <= 1){
-		display("You need at least three people to connect "+
-			"in order to play Quiplibre."
-		);
-	} else {
-		gameBegun = true;
-		round++;
-		if (round <= maxRounds){
-			allPlayers(function f(p){p.prompts = []; p.answers = []});
-			var len = players.length
-			for (var i=0; i<len; ++i) { //todo: could refactor this to use allPlayers
-				playerPairs.push([players[i], pullRandomPlayer(players[i]), pullPrompt()]);
-				playerPairs[i][0].prompts[0] = playerPairs[i][2];
-				playerPairs[i][1].prompts[1] = playerPairs[i][2];
-			}
-			for (var i=0; i<len; ++i) {
-				players[i].netPlayer.sendCmd("displayPrompt", players[i].prompts[0]);
-				players[i].state = "prompt0";
-			}
-
-			changeHeader("<h1><b>Round " + round + "</b></h1>");
-			buttonDiv.innerHTML = "";
-		}else{
-			endGame();
+	gameBegun = true;
+	round++;
+	if (round <= maxRounds) {
+		allPlayers(function f(p){p.prompts = []; p.answers = []});
+		var len = players.length
+		for (var i=0; i<len; ++i) { //todo: could refactor this to use allPlayers
+			playerPairs.push([players[i], pullRandomPlayer(players[i]), pullPrompt()]);
+			playerPairs[i][0].prompts[0] = playerPairs[i][2];
+			playerPairs[i][1].prompts[1] = playerPairs[i][2];
 		}
+		for (var i=0; i<len; ++i) {
+			players[i].netPlayer.sendCmd("displayPrompt", players[i].prompts[0]);
+			players[i].state = "prompt0";
+		}
+		display("<p><b>Answer the prompts on your device.</b></p>")
+		changeHeader("<h1><b>Round " + round + "</b></h1>");
+		buttonDiv.innerHTML = "";
+	} else {
+		endGame();
 	}
 }
 
@@ -201,8 +195,13 @@ function progressJudgement(){
 		);
 		choices = [pp[0].answers[0],pp[1].answers[1]];
 		allPlayers(function f(p){
-			p.netPlayer.sendCmd("displayChoice", choices)
-			p.state = "choosing"
+			if (p.name == pp[0].name || p.name == pp[1].name) {
+				p.netPlayer.sendCmd("cantChoose", null);
+				p.state = "rest";
+			} else {
+				p.netPlayer.sendCmd("displayChoice", choices);
+				p.state = "choosing";
+			}
 		})
 	} else {
 			nextRound();
@@ -221,19 +220,25 @@ function awardPoints(){
 
 function endGame(){
 	sortPlayers();
-		display("<p>End of the game! Here's the scoreboard:</p>"+
-			players.reduce(function f(acc, p){
-				return acc+p.name+": "+p.score+"<br>";
-			}, "")+
-			"<br><button type=\"button\" class=\"btn btn-primary\" onclick=\"newGame()\" value>New Game with Same Players</button>"+
-			"<br><button type=\"button\" class=\"btn btn-default\" onclick=\"location.reload()\" value>New Game with New Players</button>"
-		)
-		prevDiv.innerHTML = attr;
-		//todo: could send something to players
+	display("<p>End of the game! Here's the scoreboard:</p>" +
+		"<table class="table table-striped" id=playerTable>" +
+		"<thead>" +
+		"<tr><th>Player</th><th>Score</th></tr>" +
+		"</thead><tbody>" +
+		// populate each row with each name and score
+		players.reduce(function f(acc, p, index){
+			return acc + "<td>" + p.name + "</td><td>" + p.score + "</td>";
+		}, "") +
+		"</tbody></table>" +
+		"<br><button type=\"button\" class=\"btn btn-primary\" onclick=\"newGame()\" value>New Game with Same Players</button>"+
+		"<br><button type=\"button\" class=\"btn btn-default\" onclick=\"location.reload()\" value>New Game with New Players</button>"
+	)
+	prevDiv.innerHTML = attr;
+	//todo: could send something to players
 }
 
 function newGame(){
-	prevDiv.innerHTML = "Previous winner: "+players[0];
+	prevDiv.innerHTML = "Previous winner: " + players[0];
 	round = 0;
 	allPlayers(function f(p){
 		p.score=0;
@@ -248,13 +253,13 @@ function display(html){playDiv.innerHTML = html;}
 function changeHeader(html){headerDiv.innerHTML = html;}
 
 function addPlayerToTable(name){
-	var table = document.getElementById("playerTable");
 	var row = table.insertRow(1);
 	var cell = row.insertCell(0);
 	cell.innerHTML = name;
 }
 
 function computeScore(i){
+	// each progressive round is worth more points
 	var scoreCalc = votes[i] * round
 	// if one player takes all the votes, double their score
 	if ((i == 0 && votes[1] == 0)||(i == 1 && votes[0] == 0)) {

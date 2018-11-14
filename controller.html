@@ -4,16 +4,22 @@
 	<meta charset="utf-8">
 	<title>Quiplibre</title>
 	<link rel="icon" href="favicon.png" type="image/png">
+	<link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.css">
+	<script src="node_modules/bootstrap/dist/js/bootstrap.js"></script>
 </head>
 <body>
-<h1>Quiplibre</h1>
-<div id="nameDiv"></div><div id="pointsDiv"></div>
-<div id="playDiv">
-		<p>Connecting to server...</p>
-</div>
-<form id="form" onSubmit="sendAnswer()" target="playDiv" formaction="#" style="visibility: hidden">
-		<input id="inputBox"></input><input type="submit" value="Submit"></input>
-</form>
+	<div class="container-fluid text-center">
+		<h1>Quiplibre</h1>
+		<div id="nameDiv"></div><div id="pointsDiv"></div>
+		<div id="playDiv">
+		<!-- Image from Wikimedia commons. Licensed under GPLv2 !-->
+		<img src="loading.gif" alt="Loading..." style="margin-bottom:10px;">
+			<p>Connecting to server</p>
+		</div>
+		<form id="form" onSubmit="sendAnswer()" target="playDiv" formaction="#" style="visibility: hidden">
+			<input id="inputBox"></input><input type="submit" value="Submit"></input>
+		</form>
+	</div>
 </body>
 <script src="/node_modules/happyfuntimes/dist/hft.js"></script>
 <script>
@@ -32,6 +38,7 @@ client.on('displayChoice', handleDisplayChoice);
 client.on('displayMessage', handleDisplayMessage);
 client.on('updateName', handleUpdateName);
 client.on('updateScore', handleUpdateScore);
+client.on('cantChoose', handleCantChoose);
 
 function display(html){
 	playDiv.innerHTML = html;
@@ -50,11 +57,11 @@ function clearInputBox(){
 }
 
 function handleConnect() {
-	display("<p>Connected to server...</p>");
+	display("<p><b>Connected to server.</b></p>");
 }
 
 function handleDisconnect() {
-	display("<p>Disconnected.</p>");
+	display("<p><b>Disconnected.</b></p>");
 }
 
 function handleDisplayPrompt(prompt) {
@@ -67,11 +74,11 @@ function handleDisplayPrompt(prompt) {
 }
 
 function handleUpdateName(name) {
-	nameDiv.innerHTML = "Name: " + name;
+	nameDiv.innerHTML = "<b>Name:</b> " + name;
 }
 
 function handleUpdateScore(score) {
-	pointsDiv.innerHTML = "Points: " + score;
+	pointsDiv.innerHTML = "<b>Points:</b> " + score;
 }
 
 function handleDisplayChoice(choices){
@@ -98,6 +105,9 @@ function sendChoice(i) {
 	});
 };
 
+function handleCantChoose() {
+	display("<p><b>Your answer is being voted on!</b></p>");
+}
 
 </script>
 </html>

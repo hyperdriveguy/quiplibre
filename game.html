@@ -168,7 +168,11 @@ function nextRound(){
 			players[i].netPlayer.sendCmd("displayPrompt", players[i].prompts[0]);
 			players[i].state = "prompt0";
 		}
+<<<<<<< HEAD
 		display("<p><b>Answer the prompts on your device.</b></p>");
+=======
+		display("<p><b>Answer the prompts on your device.</b></p>")
+>>>>>>> 5c7a1b4654dc1d5549a369ba130a046bfb4de254
 		changeHeader("<h1><b>Round " + round + "</b></h1>");
 		buttonDiv.innerHTML = "";
 	} else {
@@ -221,7 +225,11 @@ function awardPoints(){
 function endGame(){
 	sortPlayers();
 	display("<p>End of the game! Here's the scoreboard:</p>" +
+<<<<<<< HEAD
 		"<table class=\"table table-striped\" id=\"playerTable\">" +
+=======
+		"<table class="table table-striped" id=playerTable>" +
+>>>>>>> 5c7a1b4654dc1d5549a369ba130a046bfb4de254
 		"<thead>" +
 		"<tr><th>Player</th><th>Score</th></tr>" +
 		"</thead><tbody>" +
@@ -232,7 +240,11 @@ function endGame(){
 		"</tbody></table>" +
 		"<br><button type=\"button\" class=\"btn btn-primary\" onclick=\"newGame()\" value>New Game with Same Players</button>"+
 		"<br><button type=\"button\" class=\"btn btn-default\" onclick=\"location.reload()\" value>New Game with New Players</button>"
+<<<<<<< HEAD
 	);
+=======
+	)
+>>>>>>> 5c7a1b4654dc1d5549a369ba130a046bfb4de254
 	prevDiv.innerHTML = attr;
 	//todo: could send something to players
 }

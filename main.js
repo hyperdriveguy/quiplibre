@@ -107,8 +107,8 @@ function createWindow() {
   webContents.on('will-navigate', handleRedirect);
   webContents.on('new-window', handleRedirect);
   webContents.on('dom-ready', () => {
-    if (!isDevMode) {
-      gameWindow.setFullScreen(true);
+    if (isDevMode) {
+      gameWindow.setFullScreen(false);
     }
   });
 }
@@ -187,4 +187,3 @@ function setupMenus() {
   const menu = electron.Menu.buildFromTemplate(menuTemplate);
   electron.Menu.setApplicationMenu(menu);
 }
-

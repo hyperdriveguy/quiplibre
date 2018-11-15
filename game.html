@@ -21,8 +21,10 @@
 			</tbody>
 		</table>
 	</div>
-	<div class="text-center" id="buttonDiv">
-		<button type="button" class="btn btn-primary" style="margin-bottom:30px;" id="startButton" onClick="nextRound()" disabled>Start Game</button>
+	<div class="text-center container" id="buttonDiv">
+		<button type="button" class="btn btn-primary disabled" id="startButton" onClick="nextRound()" disabled>Start Game</button>
+		<button type="button" class="btn btn-info" onClick="toggleHiddenOptions()">Configure</button>
+	  <div id="hiddenOptions"></div>
 	</div>
 </body>
 <footer>
@@ -44,10 +46,11 @@ var players = [];
 var playerPairs = [];
 var pp = []; //the current playerPair
 var round = 0;
-const maxRounds = 3; // todo: make configurable
+var maxRounds = 3;
 var choices = [];
 var votes = [0,0];
 var promptTimer = 90;
+var promptTimerReset = 90;
 var table = document.getElementById("playerTable"); // used before and after game
 
 // A new player has arrived.
@@ -59,8 +62,46 @@ server.on('playerconnect', function(netPlayer){
 	}
 	if (players.length >= 3) {
 		document.getElementById("startButton").removeAttribute("disabled");
+		document.getElementById("startButton").removeClass("disabled");
 	}
 });
+
+function toggleHiddenOptions() {
+	if (hiddenOptions.innerHTML == "") {
+		hiddenOptions.innerHTML = "<div class=\"btn-group\" style=\"margin:10px;\">" +
+			"<button type=\"button\" class=\"btn btn-default\" id=\"1roundButton\" onClick=\"changeRounds(1)\">1 Round</button>" +
+			"<button type=\"button\" class=\"btn btn-default\" id=\"2roundButton\" onClick=\"changeRounds(2)\">2 Rounds</button>" +
+			"<button type=\"button\" class=\"btn btn-primary\" id=\"3roundButton\" onClick=\"changeRounds(3)\">3 Rounds</button>" +
+			"<button type=\"button\" class=\"btn btn-default\" id=\"4roundButton\" onClick=\"changeRounds(4)\">4 Rounds</button>" +
+			"<button type=\"button\" class=\"btn btn-default\" id=\"5roundButton\" onClick=\"changeRounds(5)\">5 Rounds</button></div>" +
+			"<div class=\"btn-group\">" +
+			"<button type=\"button\" class=\"btn btn-default\" id=\"1timeButton\" onClick=\"changeTime(1)\">30 Seconds</button>" +
+			"<button type=\"button\" class=\"btn btn-default\" id=\"2timeButton\" onClick=\"changeTime(2)\">1 Minute</button>" +
+			"<button type=\"button\" class=\"btn btn-primary\" id=\"3timeButton\" onClick=\"changeTime(3)\">90 Seconds</button>" +
+			"<button type=\"button\" class=\"btn btn-default\" id=\"4timeButton\" onClick=\"changeTime(4)\">2 Minutes</button></div>";
+	}
+}
+
+function changeRounds(rounds) {
+	maxRounds = rounds;
+	for (var i = 1; i <= 5; i++){
+		document.getElementById(i + "roundButton").classList.remove("btn-primary");
+			document.getElementById(i + "roundButton").classList.add("btn-default");
+	}
+	document.getElementById(rounds + "roundButton").classList.remove("btn-default");
+	document.getElementById(rounds + "roundButton").classList.add("btn-primary");
+}
+
+function changeTime(timeMultiplier) {
+	promptTimer = timeMultiplier * 30;
+	promptTimerReset = timeMultiplier * 30;
+	for (var i = 1; i <= 4; i++){
+		document.getElementById(i + "timeButton").classList.remove("btn-primary");
+			document.getElementById(i + "timeButton").classList.add("btn-default");
+	}
+	document.getElementById(timeMultiplier + "timeButton").classList.remove("btn-default");
+	document.getElementById(timeMultiplier + "timeButton").classList.add("btn-primary");
+}
 
 function randInt(min, max){
 	if (max === undefined){
@@ -171,7 +212,7 @@ function nextRound(){
 			players[i].state = "prompt0";
 		}
 		buttonDiv.innerHTML = "";
-		display("<p><b>Answer the prompts on your device in 90 seconds!</b></p>");
+		display("<p><b>Answer the prompts on your device in a limited number of seconds!</b></p>");
 		setTimeout(changeHeader("<h1><b>Round " + round + "</b></h1>"), 3000);
 		var timerInterval = setInterval(countdownTimer, 1000)
 	} else {
@@ -193,7 +234,7 @@ function countdownTimer() {
 				players[i].netPlayer.sendCmd("forceSend", 1);
 			}
 			// reset timer for next round
-			promptTimer = 90;
+			promptTimer = promptTimerReset;
 		}
 	}
 }

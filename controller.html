@@ -2,6 +2,7 @@
 <html>
 <head>
 	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Quiplibre</title>
 	<link rel="icon" href="favicon.png" type="image/png">
 	<link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.css">
@@ -9,11 +10,16 @@
 </head>
 <body>
 	<div class="container-fluid text-center">
-		<h1>Quiplibre</h1>
-		<div id="nameDiv"></div><div id="pointsDiv"></div>
+		<div class="jumbotron container">
+			<h1>Quiplibre</h1>
+			<div class="d-flex justify-content-between">
+				<div id="nameDiv"></div>
+				<div id="pointsDiv"></div>
+			</div>
+		</div>
 		<div id="playDiv">
-		<!-- Image from Wikimedia commons. Licensed under GPLv2 !-->
-		<img src="loading.gif" alt="Loading..." style="margin-bottom:10px;">
+			<!-- Image from Wikimedia commons. Licensed under GPLv2 !-->
+			<img src="loading.gif" alt="Please Wait..." style="margin-bottom:10px;">
 			<p>Connecting to server</p>
 		</div>
 		<form id="form" onSubmit="sendAnswer()" target="playDiv" formaction="#" style="visibility: hidden">
@@ -39,6 +45,7 @@ client.on('displayMessage', handleDisplayMessage);
 client.on('updateName', handleUpdateName);
 client.on('updateScore', handleUpdateScore);
 client.on('cantChoose', handleCantChoose);
+client.on('forceSend', handleForceSend);
 
 function display(html){
 	playDiv.innerHTML = html;
@@ -65,7 +72,13 @@ function handleDisconnect() {
 }
 
 function handleDisplayPrompt(prompt) {
-	display("<p><b id=\"prompt\">"+prompt+"</b></p>");
+	if (prompt != "What is your name?") {
+		display("<h3><b>3</b></h3>");
+		setTimeout(display("<h3><b>2</b></h3>"), 1000);
+		setTimeout(display("<h3><b>1</b></h3>"), 1000);
+		setTimeout(display("<h3><b>GO!</b></h3>"), 1000);
+	}
+	display("<p><b id=\"prompt\">" + prompt + "</b></p>");
 	showForm();
 	inputBox.focus();
 	form.addEventListener("submit", function(event){
@@ -84,11 +97,17 @@ function handleUpdateScore(score) {
 function handleDisplayChoice(choices){
 	console.log(choices);
 	hideForm();
+	// handle unanswered prompts by awarding points to opponent
+	if (choices[0] == "") {sendChoice(1);}
+	if (choices[1] == "") {sendChoice(0);}
 	display("<button id=\"choice0\" onClick=\"sendChoice(0)\">"+choices[0]+"</button>"+
-	"<br>OR<br><button id=\"choice1\" onClick=\"sendChoice(1)\">"+choices[1]+"</button>");
+	"<br>VS<br><button id=\"choice1\" onClick=\"sendChoice(1)\">"+choices[1]+"</button>");
 }
 function handleDisplayMessage(message){display(message);}
 
+function handleForceSend(promptNum) {
+	sendAnswer();
+}
 
 function sendAnswer() {
 	client.sendCmd('receiveAnswer', {
@@ -106,7 +125,7 @@ function sendChoice(i) {
 };
 
 function handleCantChoose() {
-	display("<p><b>Your answer is being voted on!</b></p>");
+	display("<img src=\"loading.gif\" alt=\"Please Wait...\" style=\"margin-bottom:10px;\">");
 }
 
 </script>

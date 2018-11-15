@@ -47,6 +47,7 @@ var round = 0;
 const maxRounds = 3; // todo: make configurable
 var choices = [];
 var votes = [0,0];
+var promptTimer = 90;
 var table = document.getElementById("playerTable"); // used before and after game
 
 // A new player has arrived.
@@ -100,16 +101,17 @@ class Player {
 		//the idea is to check if the response is to the right question
 		//to prevent errors
 		console.log(this);
-		console.log(cmd.prompt+" "+cmd.answer);
-		if(cmd.answer==""){console.log("ignoring empty response")}
+		console.log(cmd.prompt + " " + cmd.answer);
+		if(cmd.answer=="" && promptTimer > 0){console.log("ignoring empty response");}
 		else if(this.state=="rest"){console.log("player is at rest!");}
-		else if(this.state=="nameless"&&cmd.prompt=="What is your name?"){
+		else if(this.state=="nameless" && cmd.prompt=="What is your name?"){
 			this.netPlayer.sendCmd("updateName", cmd.answer);
 			this.netPlayer.sendCmd("updateScore", 0);
 			this.name = cmd.answer;
 			this.state = "rest";
 			this.netPlayer.sendCmd("displayMessage",
-				"<p><b>Your game should begin shortly! Look at the big screen!</b></p>");
+				"<p><b>Your game should begin shortly! Look at the big screen!</b></p>" +
+				"<img src=\"loading.gif\" alt=\"Please Wait...\" style=\"margin-bottom:10px;\">");
 			addPlayerToTable(cmd.answer);
 			playTableHeader.innerHTML = "Players (" + players.length + ")"
 		} else if(this.state == "prompt0"){
@@ -132,7 +134,7 @@ class Player {
 		}
 	}
 	handleChoice(cmd){
-	console.log("handling choice "+JSON.stringify(cmd));
+	console.log("handling choice " + JSON.stringify(cmd));
 	console.log(JSON.stringify(this));
 	console.log(cmd.choices[0]!=choices[0]||cmd.choices[1]!=choices[1]);
 		if(cmd.choices[0]!=choices[0]||cmd.choices[1]!=choices[1]){ //remember, == does not work on arrays
@@ -143,7 +145,8 @@ class Player {
 			votes[cmd.index]++;
 			this.netPlayer.sendCmd("displayMessage","<p>You voted for \"" + (cmd.choices[cmd.index]) + "\".</p>")
 			this.state = "rest";
-			if(votes[0]+votes[1] == (players.length - 2)) { // exclude those who submitted answers
+			// exclude those who submitted answers
+			if(votes[0]+votes[1] == (players.length - 2)) {
 				awardPoints();
 				progressJudgement();
 			}
@@ -168,11 +171,31 @@ function nextRound(){
 			players[i].netPlayer.sendCmd("displayPrompt", players[i].prompts[0]);
 			players[i].state = "prompt0";
 		}
-		display("<p><b>Answer the prompts on your device.</b></p>");
-		changeHeader("<h1><b>Round " + round + "</b></h1>");
 		buttonDiv.innerHTML = "";
+		display("<p><b>Answer the prompts on your device in 90 seconds!</b></p>");
+		setTimeout(changeHeader("<h1><b>Round " + round + "</b></h1>"), 3000);
+		var timerInterval = setInterval(countdownTimer, 1000)
 	} else {
 		endGame();
+	}
+}
+
+function countdownTimer() {
+	display("<h3>" + promptTimer + "</h3>");
+	promptTimer--;
+	if (promptTimer <= 0) {
+		clearTimeout(timerInterval);
+		for (var i=0; i<len; ++i) {
+			// when time runs out, players are forced to submit
+			if (players[i].state == "prompt0") {
+				players[i].netPlayer.sendCmd("forceSend", 0);
+				players[i].netPlayer.sendCmd("forceSend", 1);
+			} else if (players[i].state == "prompt1") {
+				players[i].netPlayer.sendCmd("forceSend", 1);
+			}
+			// reset timer for next round
+			promptTimer = 90;
+		}
 	}
 }
 
@@ -198,6 +221,9 @@ function progressJudgement(){
 			if (p.name == pp[0].name || p.name == pp[1].name) {
 				p.netPlayer.sendCmd("cantChoose", null);
 				p.state = "rest";
+			} else if (pp[0].answers[0] == "" && pp[1].answers[1] == "") {
+				display("<p>Neither player answered the prompt in time!</p>");
+				setTimeout(progressJudgement, 3000);
 			} else {
 				p.netPlayer.sendCmd("displayChoice", choices);
 				p.state = "choosing";
